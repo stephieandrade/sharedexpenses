@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: shared-expenses
+  profiles:
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db/migration
+  web:
+    locale: es
+    locale-resolver: fixed
+
+server:
+  port: ${PORT:8080}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  time-zone: Europe/Madrid
+  jwt:
+    secret: ${JWT_SECRET:}
+    expiration: 24h
+    allow-random-secret: ${APP_JWT_ALLOW_RANDOM_SECRET:true}
+  captcha:
+    secret: ${TURNSTILE_SECRET:}
+    verify-url: https://challenges.cloudflare.com/turnstile/v0/siteverify
+  rate-limit:
+    register-per-client:
+      max-requests: ${RATE_LIMIT_REGISTER_PER_IP:5}
+      window: 1h
+    register-total:
+      max-requests: ${RATE_LIMIT_REGISTER_TOTAL:50}
+      window: 1h
+    login-per-client:
+      max-requests: ${RATE_LIMIT_LOGIN_PER_IP:10}
+      window: 5m
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:sharedexpenses;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+server:
+  forward-headers-strategy: native
+app:
+  jwt:
+    allow-random-secret: ${APP_JWT_ALLOW_RANDOM_SECRET:false}

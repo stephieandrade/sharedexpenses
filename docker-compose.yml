@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sharedexpenses
+      POSTGRES_USER: ${DB_USER:-sharedexpenses}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-sharedexpenses}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d sharedexpenses"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://db:5432/sharedexpenses
+      DB_USER: ${DB_USER:-sharedexpenses}
+      DB_PASSWORD: ${DB_PASSWORD:-sharedexpenses}
+      JWT_SECRET: ${JWT_SECRET:-}
+      APP_JWT_ALLOW_RANDOM_SECRET: ${APP_JWT_ALLOW_RANDOM_SECRET:-true}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:-}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+    ports:
+      - "8080:8080"
+
+volumes:
+  db-data:
