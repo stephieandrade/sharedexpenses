@@ -37,6 +37,25 @@ class PercentageSplitTest {
     }
 
     @Test
+    void keepsThePercentageOfEachShare() {
+        List<ExpenseShare> shares = split.split(new BigDecimal("10.00"), List.of(
+                new Participant(2L, new BigDecimal("33.33")),
+                new Participant(1L, new BigDecimal("66.67"))));
+
+        assertThat(shares).extracting(ExpenseShare::percentage)
+                .containsExactly(new BigDecimal("66.67"), new BigDecimal("33.33"));
+    }
+
+    @Test
+    void rejectsPercentagesWithMoreThanFourDecimals() {
+        assertThatThrownBy(() -> split.split(new BigDecimal("10"), List.of(
+                new Participant(1L, new BigDecimal("33.33333")),
+                new Participant(2L, new BigDecimal("66.66667")))))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageContaining("decimales");
+    }
+
+    @Test
     void rejectsPercentagesThatDoNotAddUpTo100() {
         assertThatThrownBy(() -> split.split(new BigDecimal("10"), List.of(
                 new Participant(1L, new BigDecimal("50")),

@@ -1,6 +1,9 @@
 package com.sharedexpenses.balances.infrastructure;
 
 import com.sharedexpenses.balances.application.CalculateBalancesUseCase;
+import com.sharedexpenses.balances.application.DeletePaymentUseCase;
+import com.sharedexpenses.balances.application.ListPaymentsUseCase;
+import com.sharedexpenses.expenses.application.GroupPaymentsRemover;
 import com.sharedexpenses.balances.application.GetSuggestedSettlementUseCase;
 import com.sharedexpenses.balances.application.PaymentRepository;
 import com.sharedexpenses.balances.application.RegisterPaymentUseCase;
@@ -34,7 +37,22 @@ public class BalancesConfig {
     }
 
     @Bean
+    ListPaymentsUseCase listPaymentsUseCase(GroupAccess access, PaymentRepository payments) {
+        return new ListPaymentsUseCase(access, payments);
+    }
+
+    @Bean
+    DeletePaymentUseCase deletePaymentUseCase(GroupAccess access, PaymentRepository payments) {
+        return new DeletePaymentUseCase(access, payments);
+    }
+
+    @Bean
     MemberBalanceProvider memberBalanceProvider(CalculateBalancesUseCase calculateBalances) {
         return new MemberBalanceAdapter(calculateBalances);
+    }
+
+    @Bean
+    GroupPaymentsRemover groupPaymentsRemover(PaymentRepository payments) {
+        return new GroupPaymentsRemoverAdapter(payments);
     }
 }

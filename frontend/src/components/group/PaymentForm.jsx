@@ -1,14 +1,37 @@
 import { useState } from 'react'
-import { hasAtMostTwoDecimals, parseDecimal, todayIso } from '../../utils/format.js'
+import { formatMoney, hasAtMostTwoDecimals, parseDecimal, toCents, todayIso } from '../../utils/format.js'
 import ErrorMessage from '../ErrorMessage.jsx'
 
-export default function PaymentForm({ members, currentUserId, currency, onSubmit, onCancel }) {
+function overpaymentWarning(balances, nameOf, fromUserId, toUserId, value, currency) {
+  if (!(value > 0) || fromUserId === toUserId) {
+    return null
+  }
+  const balanceOf = (userId) => Number(balances.find((b) => b.userId === userId)?.amount ?? 0)
+  const debt = Math.max(0, -balanceOf(fromUserId))
+  const credit = Math.max(0, balanceOf(toUserId))
+  const limit = Math.min(debt, credit)
+  if (toCents(value) <= toCents(limit)) {
+    return null
+  }
+  if (limit === 0) {
+    return debt === 0
+      ? `${nameOf(fromUserId)} no tiene deudas pendientes: este pago creará una deuda nueva a su favor.`
+      : `A ${nameOf(toUserId)} no le deben dinero: este pago creará una deuda nueva.`
+  }
+  return `El pago es mayor que lo que se puede saldar entre ${nameOf(fromUserId)} y ${nameOf(toUserId)} `
+    + `(${formatMoney(limit, currency)}). La diferencia quedará como una deuda nueva.`
+}
+
+export default function PaymentForm({ members, balances = [], nameOf, currentUserId, currency, onSubmit, onCancel }) {
   const [fromUserId, setFromUserId] = useState(currentUserId)
   const [toUserId, setToUserId] = useState(() => members.find((m) => m.id !== currentUserId)?.id ?? currentUserId)
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(todayIso)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(null)
+  const warning = nameOf
+    ? overpaymentWarning(balances, nameOf, fromUserId, toUserId, parseDecimal(amount), currency)
+    : null
 
   const submit = async (event) => {
     event.preventDefault()
@@ -58,6 +81,7 @@ export default function PaymentForm({ members, currentUserId, currency, onSubmit
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
       </div>
+      {warning && <p className="alert alert-warning" role="status">{warning}</p>}
       <ErrorMessage error={error} />
       <div className="form__actions">
         <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancelar</button>

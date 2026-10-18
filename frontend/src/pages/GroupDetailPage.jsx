@@ -7,6 +7,7 @@ import Loading from '../components/Loading.jsx'
 import BalancesTab from '../components/group/BalancesTab.jsx'
 import ExpensesTab from '../components/group/ExpensesTab.jsx'
 import MembersTab from '../components/group/MembersTab.jsx'
+import SettingsTab from '../components/group/SettingsTab.jsx'
 import SettlementTab from '../components/group/SettlementTab.jsx'
 import { balanceClass, formatMoney } from '../utils/format.js'
 
@@ -15,6 +16,7 @@ const TABS = [
   { id: 'balances', label: 'Balances' },
   { id: 'settlement', label: 'Liquidación' },
   { id: 'members', label: 'Miembros' },
+  { id: 'settings', label: 'Ajustes' },
 ]
 
 export default function GroupDetailPage() {
@@ -29,13 +31,14 @@ export default function GroupDetailPage() {
   const tab = TABS.some((t) => t.id === requestedTab) ? requestedTab : TABS[0].id
 
   const fetchGroupData = useCallback(async () => {
-    const [group, expenses, balances, settlement] = await Promise.all([
+    const [group, expenses, balances, settlement, payments] = await Promise.all([
       api.getGroup(groupId),
       api.listExpenses(groupId),
       api.getBalances(groupId),
       api.getSettlement(groupId),
+      api.listPayments(groupId),
     ])
-    return { group, expenses, balances, settlement }
+    return { group, expenses, balances, settlement, payments }
   }, [groupId])
 
   useEffect(() => {
@@ -80,7 +83,7 @@ export default function GroupDetailPage() {
     ) : <Loading />
   }
 
-  const { group, expenses, balances, settlement } = data
+  const { group, expenses, balances, settlement, payments } = data
   const myBalance = balances.find((b) => b.userId === user.id)
   const props = { group, currency: group.currency, currentUserId: user.id, nameOf, onChanged: reload }
 
@@ -113,9 +116,12 @@ export default function GroupDetailPage() {
       </nav>
 
       <ErrorMessage error={error} />
-      {tab === 'expenses' && <ExpensesTab {...props} expenses={expenses} />}
+      {tab === 'expenses' && <ExpensesTab {...props} expenses={expenses} payments={payments} />}
       {tab === 'balances' && <BalancesTab {...props} balances={balances} />}
-      {tab === 'settlement' && <SettlementTab {...props} settlement={settlement} />}
+      {tab === 'settlement' && <SettlementTab {...props} settlement={settlement} payments={payments} balances={balances} />}
+      {tab === 'settings' && (
+        <SettingsTab {...props} onDeleted={() => navigate('/groups', { replace: true })} />
+      )}
       {tab === 'members' && (
         <MembersTab {...props} balances={balances} onLeft={() => navigate('/groups', { replace: true })} />
       )}

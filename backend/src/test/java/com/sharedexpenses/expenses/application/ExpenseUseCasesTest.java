@@ -45,6 +45,8 @@ class ExpenseUseCasesTest {
     GroupRepository groups;
     @Mock
     ExpenseRepository expenses;
+    @Mock
+    GroupPaymentsRemover paymentsRemover;
 
     CreateExpenseUseCase createExpense;
     GroupAccess access;
@@ -69,9 +71,11 @@ class ExpenseUseCasesTest {
                 new Participant(1L, new BigDecimal("75")), new Participant(2L, new BigDecimal("25")))));
 
         assertThat(expense.date()).isEqualTo(TODAY);
+        assertThat(expense.createdById()).isEqualTo(1L);
         assertThat(expense.splitType()).isEqualTo(SplitType.PERCENTAGES);
         assertThat(expense.shares()).containsExactly(
-                new ExpenseShare(1L, new BigDecimal("30.00")), new ExpenseShare(2L, new BigDecimal("10.00")));
+                new ExpenseShare(1L, new BigDecimal("30.00"), new BigDecimal("75")),
+                new ExpenseShare(2L, new BigDecimal("10.00"), new BigDecimal("25")));
     }
 
     @Test
@@ -104,21 +108,77 @@ class ExpenseUseCasesTest {
     }
 
     @Test
-    void deletesAnExpenseOfTheGroup() {
+    void deletesAnExpenseAndKeepsPaymentsWhileOtherExpensesRemain() {
         when(expenses.findById(50L)).thenReturn(Optional.of(sampleExpense(10L)));
+        when(expenses.findByGroupId(10L)).thenReturn(List.of(sampleExpense(10L)));
 
-        new DeleteExpenseUseCase(access, expenses).execute(10L, 50L, 1L);
+        new DeleteExpenseUseCase(access, expenses, paymentsRemover).execute(10L, 50L, 1L);
 
         verify(expenses).deleteById(50L);
+        verify(paymentsRemover, never()).removeAllPayments(any());
+    }
+
+    @Test
+    void deletingTheLastExpenseAlsoRemovesThePaymentsOfTheGroup() {
+        when(expenses.findById(50L)).thenReturn(Optional.of(sampleExpense(10L)));
+        when(expenses.findByGroupId(10L)).thenReturn(List.of());
+
+        new DeleteExpenseUseCase(access, expenses, paymentsRemover).execute(10L, 50L, 1L);
+
+        verify(expenses).deleteById(50L);
+        verify(paymentsRemover).removeAllPayments(10L);
+    }
+
+    @Test
+    void updatesAnExpenseKeepingItsIdAndDate() {
+        when(expenses.findById(50L)).thenReturn(Optional.of(sampleExpense(10L).createdBy(1L)));
+        when(expenses.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Expense updated = updateExpense().execute(new UpdateExpenseUseCase.Command(10L, 50L, 2L, "Cena y copas",
+                new BigDecimal("45.00"), 2L, null, SplitType.AMOUNTS,
+                List.of(new Participant(1L, new BigDecimal("15")), new Participant(2L, new BigDecimal("30")))));
+
+        assertThat(updated.id()).isEqualTo(50L);
+        assertThat(updated.createdById()).isEqualTo(1L);
+        assertThat(updated.date()).isEqualTo(TODAY);
+        assertThat(updated.description()).isEqualTo("Cena y copas");
+        assertThat(updated.paidById()).isEqualTo(2L);
+        assertThat(updated.shares()).extracting(ExpenseShare::amount)
+                .containsExactly(new BigDecimal("15.00"), new BigDecimal("30.00"));
+    }
+
+    @Test
+    void updatingWithParticipantsOutsideTheGroupIsRejected() {
+        when(expenses.findById(50L)).thenReturn(Optional.of(sampleExpense(10L)));
+
+        assertThatThrownBy(() -> updateExpense().execute(new UpdateExpenseUseCase.Command(10L, 50L, 1L, "Cena",
+                new BigDecimal("20"), 1L, null, SplitType.EQUAL, List.of(Participant.of(1L), Participant.of(9L)))))
+                .isInstanceOf(BusinessRuleException.class);
+        verify(expenses, never()).save(any());
+    }
+
+    @Test
+    void cannotUpdateAnExpenseOfAnotherGroup() {
+        when(expenses.findById(50L)).thenReturn(Optional.of(sampleExpense(77L)));
+
+        assertThatThrownBy(() -> updateExpense().execute(new UpdateExpenseUseCase.Command(10L, 50L, 1L, "Cena",
+                new BigDecimal("20"), 1L, null, SplitType.EQUAL, List.of(Participant.of(1L)))))
+                .isInstanceOf(NotFoundException.class);
     }
 
     @Test
     void cannotDeleteAnExpenseFromAnotherGroup() {
         when(expenses.findById(50L)).thenReturn(Optional.of(sampleExpense(77L)));
 
-        assertThatThrownBy(() -> new DeleteExpenseUseCase(access, expenses).execute(10L, 50L, 1L))
+        assertThatThrownBy(() -> new DeleteExpenseUseCase(access, expenses, paymentsRemover).execute(10L, 50L, 1L))
                 .isInstanceOf(NotFoundException.class);
         verify(expenses, never()).deleteById(any());
+        verify(paymentsRemover, never()).removeAllPayments(any());
+    }
+
+    private UpdateExpenseUseCase updateExpense() {
+        return new UpdateExpenseUseCase(access, expenses,
+                new SplitStrategyRegistry(List.of(new EqualSplit(), new AmountSplit(), new PercentageSplit())));
     }
 
     private static CreateExpenseUseCase.Command command(Long requesterId, Long paidById, SplitType type,

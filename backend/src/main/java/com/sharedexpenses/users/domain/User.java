@@ -13,6 +13,16 @@ public record User(Long id, String name, String email, String passwordHash) {
         Guard.required(passwordHash, "La contraseña es obligatoria");
     }
 
+    public static final String DELETED_NAME = "Usuario eliminado";
+
+    public User withPasswordHash(String newPasswordHash) {
+        return new User(id, name, email, newPasswordHash);
+    }
+
+    public User anonymized(String unusablePasswordHash) {
+        return new User(id, DELETED_NAME, "deleted-" + id + "@deleted.invalid", unusablePasswordHash);
+    }
+
     public static String normalizeEmail(String email) {
         return Guard.requiredText(email, "El email es obligatorio").toLowerCase(Locale.ROOT);
     }

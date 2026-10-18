@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 @Transactional(readOnly = true)
@@ -24,7 +25,24 @@ public class PaymentPersistenceAdapter implements PaymentRepository {
     }
 
     @Override
+    public Optional<Payment> findById(Long id) {
+        return jpa.findById(id).map(PaymentMapper::toDomain);
+    }
+
+    @Override
     public List<Payment> findByGroupId(Long groupId) {
         return jpa.findByGroupIdOrderByDateAscIdAsc(groupId).stream().map(PaymentMapper::toDomain).toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteById(Long id) {
+        jpa.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void deleteByGroupId(Long groupId) {
+        jpa.deleteAllByGroupId(groupId);
     }
 }

@@ -7,10 +7,12 @@ public class DeleteExpenseUseCase {
 
     private final GroupAccess access;
     private final ExpenseRepository expenses;
+    private final GroupPaymentsRemover paymentsRemover;
 
-    public DeleteExpenseUseCase(GroupAccess access, ExpenseRepository expenses) {
+    public DeleteExpenseUseCase(GroupAccess access, ExpenseRepository expenses, GroupPaymentsRemover paymentsRemover) {
         this.access = access;
         this.expenses = expenses;
+        this.paymentsRemover = paymentsRemover;
     }
 
     public void execute(Long groupId, Long expenseId, Long requesterId) {
@@ -19,5 +21,8 @@ public class DeleteExpenseUseCase {
                 .filter(expense -> expense.groupId().equals(groupId))
                 .orElseThrow(() -> new NotFoundException("Gasto no encontrado"));
         expenses.deleteById(expenseId);
+        if (expenses.findByGroupId(groupId).isEmpty()) {
+            paymentsRemover.removeAllPayments(groupId);
+        }
     }
 }

@@ -8,11 +8,11 @@ import java.time.LocalDate;
 import java.util.List;
 
 public record ExpenseResponse(Long id, String description, BigDecimal amount, Long paidById, LocalDate date,
-                              SplitType splitType, List<ExpenseShareResponse> shares) {
+                              SplitType splitType, List<ExpenseShareResponse> shares, Long createdById) {
 
     static ExpenseResponse from(Expense expense) {
         return new ExpenseResponse(expense.id(), expense.description(), expense.amount(), expense.paidById(),
                 expense.date(), expense.splitType(),
-                expense.shares().stream().map(ExpenseShareResponse::from).toList());
+                expense.shares().stream().map(ExpenseShareResponse::from).toList(), expense.createdById());
     }
 }

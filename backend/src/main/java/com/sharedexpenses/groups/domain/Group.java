@@ -41,6 +41,10 @@ public class Group {
                 List.of(new Member(creatorId, now)), null);
     }
 
+    public Group withDetails(String newName, String newDescription) {
+        return new Group(id, newName, newDescription, currency, creatorId, createdAt, members, version);
+    }
+
     public boolean isMember(Long userId) {
         return members.stream().anyMatch(m -> m.userId().equals(userId));
     }

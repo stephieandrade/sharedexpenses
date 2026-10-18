@@ -52,10 +52,13 @@ npm run dev                     # http://localhost:5173
 
 - Registro e inicio de sesión con JWT.
 - Grupos: crear, listar, ver detalle, añadir miembros por email, eliminar miembros (solo el creador) o abandonar el grupo.
-- Gastos con tres tipos de reparto: a partes iguales, por importes o por porcentajes. Las partes suman siempre el
+- Gastos con tres tipos de reparto: a partes iguales, por importes o por porcentajes. Se pueden editar y eliminar. Las partes suman siempre el
   importe exacto; los céntimos sobrantes se asignan de forma determinista.
 - Balance de cada miembro (la suma del grupo es siempre 0) y liquidación sugerida con el mínimo de pagos (como mucho N−1).
-- Registro de pagos entre miembros para saldar deudas.
+- Registro de pagos entre miembros para saldar deudas, con historial y aviso si un pago supera la deuda.
+- Edición y eliminación de grupos (solo el creador puede eliminarlos).
+- Cuenta de usuario: cambio de contraseña y eliminación de la cuenta (los datos personales se anonimizan y el
+  historial compartido se conserva para el resto de miembros).
 
 ## Documentación de la API
 
@@ -66,17 +69,24 @@ Swagger UI: `http://localhost:8080/swagger-ui.html` (en local). Para probar los 
 |---|---|---|
 | POST | `/api/auth/register` | Registro (devuelve token) |
 | POST | `/api/auth/login` | Inicio de sesión (devuelve token) |
+| PUT | `/api/users/me/password` | Cambiar contraseña |
+| DELETE | `/api/users/me` | Eliminar la cuenta |
 | GET | `/api/groups` | Mis grupos |
 | POST | `/api/groups` | Crear grupo |
 | GET | `/api/groups/{groupId}` | Detalle con miembros |
+| PUT | `/api/groups/{groupId}` | Modificar nombre y descripción |
+| DELETE | `/api/groups/{groupId}` | Eliminar grupo (solo el creador) |
 | POST | `/api/groups/{groupId}/members` | Añadir miembro por email |
 | DELETE | `/api/groups/{groupId}/members/{memberId}` | Eliminar miembro / abandonar el grupo |
 | GET | `/api/groups/{groupId}/expenses` | Gastos del grupo |
 | POST | `/api/groups/{groupId}/expenses` | Registrar gasto |
+| PUT | `/api/groups/{groupId}/expenses/{expenseId}` | Modificar gasto |
 | DELETE | `/api/groups/{groupId}/expenses/{expenseId}` | Eliminar gasto |
 | GET | `/api/groups/{groupId}/balances` | Balance de cada miembro |
 | GET | `/api/groups/{groupId}/settlement` | Liquidación sugerida |
+| GET | `/api/groups/{groupId}/payments` | Pagos registrados |
 | POST | `/api/groups/{groupId}/payments` | Registrar pago |
+| DELETE | `/api/groups/{groupId}/payments/{paymentId}` | Eliminar pago |
 
 Los errores siguen el formato estándar `ProblemDetail` (RFC 9457):
 400 datos no válidos, 401 sin sesión, 403 sin permiso, 404 no encontrado, 409 conflicto, 422 regla de negocio,

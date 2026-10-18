@@ -1,7 +1,10 @@
 package com.sharedexpenses.users.infrastructure;
 
 import com.sharedexpenses.shared.security.JwtProperties;
+import com.sharedexpenses.users.application.ChangePasswordUseCase;
+import com.sharedexpenses.users.application.DeleteAccountUseCase;
 import com.sharedexpenses.users.application.LoginUseCase;
+import com.sharedexpenses.users.application.MembershipRemover;
 import com.sharedexpenses.users.application.PasswordHasher;
 import com.sharedexpenses.users.application.RegisterUserUseCase;
 import com.sharedexpenses.users.application.TokenIssuer;
@@ -38,6 +41,17 @@ public class UsersConfig {
     RegisterUserUseCase registerUserUseCase(UserRepository users, PasswordHasher passwordHasher,
                                             TokenIssuer tokenIssuer) {
         return new RegisterUserUseCase(users, passwordHasher, tokenIssuer);
+    }
+
+    @Bean
+    ChangePasswordUseCase changePasswordUseCase(UserRepository users, PasswordHasher passwordHasher) {
+        return new ChangePasswordUseCase(users, passwordHasher);
+    }
+
+    @Bean
+    DeleteAccountUseCase deleteAccountUseCase(UserRepository users, PasswordHasher passwordHasher,
+                                              MembershipRemover membershipRemover) {
+        return new DeleteAccountUseCase(users, passwordHasher, membershipRemover);
     }
 
     @Bean

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { api } from '../../api/api.js'
+import { useConfirm } from '../../confirm/useConfirm.js'
 import { balanceClass, formatMoney } from '../../utils/format.js'
 import ErrorMessage from '../ErrorMessage.jsx'
 
 export default function MembersTab({ group, balances, currency, currentUserId, onChanged, onLeft }) {
+  const confirm = useConfirm()
   const [email, setEmail] = useState('')
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState(null)
@@ -27,8 +29,20 @@ export default function MembersTab({ group, balances, currency, currentUserId, o
 
   const remove = async (member) => {
     const leaving = member.id === currentUserId
-    const question = leaving ? '¿Seguro que quieres salir del grupo?' : `¿Eliminar a ${member.name} del grupo?`
-    if (!window.confirm(question)) {
+    const accepted = await confirm(leaving
+      ? {
+          title: '¿Salir del grupo?',
+          message: `Dejarás de ver los gastos y balances de "${group.name}". Solo puedes salir si tu balance es 0.`,
+          confirmLabel: 'Salir del grupo',
+          danger: true,
+        }
+      : {
+          title: `¿Eliminar a ${member.name} del grupo?`,
+          message: 'Solo se puede eliminar a un miembro cuando su balance es 0.',
+          confirmLabel: 'Eliminar miembro',
+          danger: true,
+        })
+    if (!accepted) {
       return
     }
     setError(null)

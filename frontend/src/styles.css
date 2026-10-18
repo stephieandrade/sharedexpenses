@@ -149,6 +149,12 @@ select {
 .app-header__name {
   color: var(--color-muted);
   font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.app-header__name:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
 }
 
 .brand {
@@ -248,6 +254,51 @@ select {
   min-height: 34px;
   padding: 0.3rem 0.75rem;
   font-size: 0.875rem;
+}
+
+.btn-danger {
+  background: var(--color-negative);
+  color: #ffffff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.dialog {
+  width: min(440px, calc(100% - 2rem));
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 20px 45px rgb(0 0 0 / 25%);
+}
+
+.dialog::backdrop {
+  background: rgb(15 23 22 / 45%);
+}
+
+.dialog[open] {
+  animation: dialog-in 0.15s ease-out;
+}
+
+.dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+}
+
+.dialog__body .form__actions {
+  margin-top: 0.5rem;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
 }
 
 .btn-danger-text {
@@ -413,6 +464,20 @@ select {
   margin-top: 0.35rem;
   padding-left: 1.1rem;
   list-style: disc;
+}
+
+.alert-warning {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.alert-success {
+  background: var(--color-positive-soft);
+  color: var(--color-positive);
+}
+
+.danger-zone {
+  border-color: var(--color-negative);
 }
 
 .alert-error {
@@ -643,6 +708,12 @@ select {
   gap: 1rem;
 }
 
+.expense__actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
 .expense__footer details {
   flex: 1;
   font-size: 0.875rem;
@@ -721,6 +792,33 @@ select {
   flex-wrap: wrap;
 }
 
+.section-title {
+  margin-top: 1rem;
+  font-size: 1rem;
+}
+
+.payments {
+  gap: 0;
+  padding: 0.25rem 1rem;
+}
+
+.payment {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.payment:last-child {
+  border-bottom: 0;
+}
+
+.payment .muted {
+  font-size: 0.85rem;
+}
+
 .member {
   display: flex;
   justify-content: space-between;
@@ -750,7 +848,10 @@ select {
   }
 
   .app-header__name {
-    display: none;
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .balance-pill {

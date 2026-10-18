@@ -99,8 +99,9 @@ Principles the code must reflect (and that are explained in the README / Design 
 - **User**: id, name, email (unique), passwordHash (BCrypt)
 - **Group**: id, name, description, currency (EUR by default), creatorId, createdAt, members, version
 - **Member**: userId, joinedAt
-- **Expense**: id, groupId, description, amount, paidById, date, splitType (EQUAL, AMOUNTS, PERCENTAGES), shares
-- **ExpenseShare**: userId, amount
+- **Expense**: id, groupId, description, amount, paidById, date, splitType (EQUAL, AMOUNTS, PERCENTAGES), shares,
+  createdById (who added it; kept on edits, null for expenses created before migration V3)
+- **ExpenseShare**: userId, amount, percentage (only for PERCENTAGES, so an edit shows the original values)
 - **Payment**: id, groupId, fromUserId, toUserId, amount, date (records that a debt has been settled)
 - Splits: `SplitStrategy` interface with `EqualSplit`, `AmountSplit`, `PercentageSplit`
 - Balances: `BalanceCalculator`, `DebtSimplifier` → `SuggestedPayment`. Positive balance = the member is owed money
@@ -117,10 +118,24 @@ Principles the code must reflect (and that are explained in the README / Design 
 - Debt simplification uses a greedy algorithm (biggest creditor with biggest debtor) and
   produces at most N−1 payments.
 - A member with a non-zero balance cannot be removed.
-- Permissions: any member can add members, create/delete expenses and register payments.
+- Permissions: any member can add members, create/edit/delete expenses and register/delete payments.
+- Payments settle net debts between two members, not a specific expense. Deleting the last expense of a group
+  also deletes its payments (via the `expenses` port `GroupPaymentsRemover`, implemented in `balances`);
+  otherwise payments stay and can be deleted one by one from the payment history.
   Only the creator can remove other members; any member can leave the group themselves.
   The creator cannot be removed or leave.
 - Balances list every current member plus former members who still have a non-zero balance.
+- Groups: any member edits name/description; the currency cannot change. Only the creator deletes the group
+  (expenses, payments and memberships go with it; user accounts stay).
+- Account deletion (GDPR): requires the password; blocked if the user has a non-zero balance in any group or created
+  a group that has other members. Groups where the user is alone are deleted, other memberships are left, and the
+  user row is anonymized ("Usuario eliminado", deleted-<id>@deleted.invalid, random password) so shared history
+  stays consistent. `users` asks `groups` through its port `MembershipRemover` (implemented by
+  `MembershipRemoverAdapter` → `LeaveAllGroupsUseCase`). Known limitation: an already issued JWT stays valid until
+  it expires (max 24 h).
+- Password change requires the current password; a wrong one is a 422 (not 401, which would end the session).
+  `PasswordPolicy` (8–72 characters) is shared by registration and password change.
+- The payment form warns (without blocking) when a payment is larger than what the two people can settle.
 
 ## Planned use cases
 
@@ -134,17 +149,24 @@ Principles the code must reflect (and that are explained in the README / Design 
 ```
 POST   /api/auth/register                         public, 201 {token, expiresAt, user}
 POST   /api/auth/login                            public, 200 {token, expiresAt, user}
+PUT    /api/users/me/password                     204, {currentPassword, newPassword}
+DELETE /api/users/me                              204, {password}; leaves groups and anonymizes the user
 GET    /api/groups
 POST   /api/groups                                201
 GET    /api/groups/{groupId}                      detail with members
+PUT    /api/groups/{groupId}                      name and description (any member)
+DELETE /api/groups/{groupId}                      204, creator only; DB cascade removes expenses and payments
 POST   /api/groups/{groupId}/members              201, body {email}
 DELETE /api/groups/{groupId}/members/{memberId}   204
 GET    /api/groups/{groupId}/expenses
 POST   /api/groups/{groupId}/expenses             201
+PUT    /api/groups/{groupId}/expenses/{expenseId} same body as POST, keeps id and date if omitted
 DELETE /api/groups/{groupId}/expenses/{expenseId} 204
 GET    /api/groups/{groupId}/balances
 GET    /api/groups/{groupId}/settlement
+GET    /api/groups/{groupId}/payments             newest first
 POST   /api/groups/{groupId}/payments             201
+DELETE /api/groups/{groupId}/payments/{paymentId} 204
 ```
 
 - Controllers live in `<module>/infrastructure/web` with their request/response records; responses

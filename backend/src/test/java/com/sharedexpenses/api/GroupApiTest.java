@@ -3,6 +3,7 @@ package com.sharedexpenses.api;
 import org.junit.jupiter.api.Test;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -86,6 +87,40 @@ class GroupApiTest extends ApiTestSupport {
         deleteAs(ana, "/api/groups/{id}/members/{userId}", groupId, bea.id())
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.detail").value("No se puede eliminar a un miembro con balance distinto de 0"));
+    }
+
+    @Test
+    void anyMemberCanEditTheGroup() throws Exception {
+        TestUser ana = registerUser("Ana");
+        TestUser bea = registerUser("Bea");
+        Long groupId = createGroup(ana, "Piso", bea);
+
+        perform(bea, put("/api/groups/{id}", groupId), """
+                {"name": "Piso de la calle Mayor", "description": "Luz, agua y compra"}
+                """)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Piso de la calle Mayor"))
+                .andExpect(jsonPath("$.currency").value("EUR"));
+
+        getAs(ana, "/api/groups/{id}", groupId).andExpect(jsonPath("$.description").value("Luz, agua y compra"));
+    }
+
+    @Test
+    void onlyTheCreatorDeletesTheGroupAndItsDataButNotTheUsers() throws Exception {
+        TestUser ana = registerUser("Ana");
+        TestUser bea = registerUser("Bea");
+        Long groupId = createGroup(ana, "Viaje", bea);
+        perform(ana, post("/api/groups/{id}/expenses", groupId), """
+                {"description": "Hotel", "amount": 80, "paidById": %d, "splitType": "EQUAL",
+                 "participants": [{"userId": %d}, {"userId": %d}]}
+                """, ana.id(), ana.id(), bea.id()).andExpect(status().isCreated());
+
+        deleteAs(bea, "/api/groups/{id}", groupId).andExpect(status().isForbidden());
+        deleteAs(ana, "/api/groups/{id}", groupId).andExpect(status().isNoContent());
+
+        getAs(ana, "/api/groups/{id}", groupId).andExpect(status().isNotFound());
+        getAs(bea, "/api/groups").andExpect(jsonPath("$").isEmpty());
+        getAs(bea, "/api/groups").andExpect(status().isOk());
     }
 
     @Test

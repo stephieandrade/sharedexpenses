@@ -35,6 +35,22 @@ class ExpenseTest {
     }
 
     @Test
+    void updateReplacesTheDataAndKeepsIdAndGroup() {
+        Expense original = new Expense(7L, 3L, "Cena", new BigDecimal("10.00"), 1L, TODAY, SplitType.EQUAL,
+                List.of(new ExpenseShare(1L, new BigDecimal("5.00")), new ExpenseShare(2L, new BigDecimal("5.00"))));
+
+        Expense updated = original.update("Cena y taxi", new BigDecimal("30"), 2L, TODAY.plusDays(1),
+                new EqualSplit(), participants(1L, 2L, 3L));
+
+        assertThat(updated.id()).isEqualTo(7L);
+        assertThat(updated.groupId()).isEqualTo(3L);
+        assertThat(updated.description()).isEqualTo("Cena y taxi");
+        assertThat(updated.paidById()).isEqualTo(2L);
+        assertThat(updated.shares()).hasSize(3);
+        assertThat(original.description()).isEqualTo("Cena");
+    }
+
+    @Test
     void rejectsSharesThatDoNotAddUpToTheAmount() {
         assertThatThrownBy(() -> new Expense(null, 1L, "Cena", new BigDecimal("10.00"), 1L, TODAY, SplitType.AMOUNTS,
                 List.of(new ExpenseShare(1L, new BigDecimal("5.00")), new ExpenseShare(2L, new BigDecimal("4.99")))))

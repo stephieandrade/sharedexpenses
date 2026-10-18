@@ -6,6 +6,7 @@ import com.sharedexpenses.expenses.domain.EqualSplit;
 import com.sharedexpenses.expenses.domain.Expense;
 import com.sharedexpenses.expenses.domain.ExpenseShare;
 import com.sharedexpenses.expenses.domain.Participant;
+import com.sharedexpenses.expenses.domain.PercentageSplit;
 import com.sharedexpenses.expenses.infrastructure.persistence.ExpensePersistenceAdapter;
 import com.sharedexpenses.groups.domain.Group;
 import com.sharedexpenses.groups.domain.Member;
@@ -107,6 +108,48 @@ class PersistenceAdaptersTest {
 
         expenses.deleteById(saved.id());
         assertThat(expenses.findById(saved.id())).isEmpty();
+    }
+
+    @Test
+    void storesThePercentagesOfAPercentageSplitAndUpdatesTheExpense() {
+        Long groupId = groupWithAllUsers();
+        Expense saved = expenses.save(Expense.create(groupId, "Hotel", new BigDecimal("100.00"), ana, TODAY,
+                new PercentageSplit(), List.of(
+                        new Participant(ana, new BigDecimal("33.3333")),
+                        new Participant(bea, new BigDecimal("66.6667")))));
+
+        Expense loaded = expenses.findById(saved.id()).orElseThrow();
+        assertThat(loaded.shares()).extracting(ExpenseShare::percentage)
+                .usingElementComparator(BigDecimal::compareTo)
+                .containsExactlyInAnyOrder(new BigDecimal("33.3333"), new BigDecimal("66.6667"));
+
+        expenses.save(loaded.update("Hotel", new BigDecimal("50.00"), bea, TODAY, new EqualSplit(),
+                List.of(Participant.of(ana), Participant.of(bea), Participant.of(carla))));
+
+        Expense updated = expenses.findById(saved.id()).orElseThrow();
+        assertThat(updated.shares()).hasSize(3);
+        assertThat(updated.shares()).extracting(ExpenseShare::percentage).containsOnlyNulls();
+        assertThat(updated.paidById()).isEqualTo(bea);
+    }
+
+    @Test
+    void deletingAGroupRemovesItsExpensesAndPaymentsButKeepsTheUsers() {
+        Long groupId = groupWithAllUsers();
+        Expense expense = expenses.save(Expense.create(groupId, "Cena", new BigDecimal("30.00"), ana, TODAY,
+                new EqualSplit(), List.of(Participant.of(ana), Participant.of(bea))).createdBy(ana));
+        payments.save(new Payment(null, groupId, bea, ana, new BigDecimal("15.00"), TODAY));
+        assertThat(expenses.findById(expense.id()).orElseThrow().createdById()).isEqualTo(ana);
+        entityManager.flush();
+        entityManager.clear();
+
+        groups.deleteById(groupId);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(groups.findById(groupId)).isEmpty();
+        assertThat(expenses.findById(expense.id())).isEmpty();
+        assertThat(payments.findByGroupId(groupId)).isEmpty();
+        assertThat(users.findAllById(List.of(ana, bea, carla))).hasSize(3);
     }
 
     @Test

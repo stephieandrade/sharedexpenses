@@ -33,4 +33,10 @@ public class GroupPersistenceAdapter implements GroupRepository {
     public List<Group> findByMember(Long userId) {
         return jpa.findByMember(userId).stream().map(GroupMapper::toDomain).toList();
     }
+
+    @Override
+    @Transactional
+    public void deleteById(Long id) {
+        jpa.deleteById(id);
+    }
 }

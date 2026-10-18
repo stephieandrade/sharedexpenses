@@ -46,6 +46,9 @@ public class ExpenseEntity {
     @Column(name = "split_type", nullable = false, length = 20)
     private SplitType splitType;
 
+    @Column(name = "created_by_id")
+    private Long createdById;
+
     @ElementCollection
     @CollectionTable(name = "expense_shares", joinColumns = @JoinColumn(name = "expense_id"))
     private List<ExpenseShareEmbeddable> shares = new ArrayList<>();
@@ -54,7 +57,7 @@ public class ExpenseEntity {
     }
 
     ExpenseEntity(Long id, Long groupId, String description, BigDecimal amount, Long paidById, LocalDate date,
-                  SplitType splitType, List<ExpenseShareEmbeddable> shares) {
+                  SplitType splitType, List<ExpenseShareEmbeddable> shares, Long createdById) {
         this.id = id;
         this.groupId = groupId;
         this.description = description;
@@ -63,6 +66,7 @@ public class ExpenseEntity {
         this.date = date;
         this.splitType = splitType;
         this.shares = new ArrayList<>(shares);
+        this.createdById = createdById;
     }
 
     Long getId() {
@@ -91,6 +95,10 @@ public class ExpenseEntity {
 
     SplitType getSplitType() {
         return splitType;
+    }
+
+    Long getCreatedById() {
+        return createdById;
     }
 
     List<ExpenseShareEmbeddable> getShares() {

@@ -45,6 +45,7 @@ export default function LoginPage() {
           <input type="password" autoComplete="current-password" required value={password}
                  onChange={(e) => setPassword(e.target.value)} />
         </label>
+        {location.state?.notice && <p className="alert alert-success" role="status">{location.state.notice}</p>}
         <ErrorMessage error={error} />
         {slow && (
           <p className="hint">

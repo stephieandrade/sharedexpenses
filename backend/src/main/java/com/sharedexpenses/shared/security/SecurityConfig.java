@@ -81,7 +81,7 @@ public class SecurityConfig {
                 .map(String::strip)
                 .filter(origin -> !origin.isEmpty())
                 .toList());
-        cors.setAllowedMethods(List.of("GET", "POST", "DELETE", "OPTIONS"));
+        cors.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Authorization", "Content-Type", RegistrationCaptchaFilter.CAPTCHA_HEADER));
         cors.setMaxAge(3600L);
 

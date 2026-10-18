@@ -19,3 +19,6 @@ Thumbs.db
 
 # Claude Code (local)
 .claude/
+
+# Notas privadas (no se publican)
+docs/guion-video.md

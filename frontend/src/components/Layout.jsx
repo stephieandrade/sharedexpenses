@@ -14,7 +14,7 @@ export default function Layout() {
             <span>SharedExpenses</span>
           </Link>
           <div className="app-header__user">
-            <span className="app-header__name">{user.name}</span>
+            <Link to="/account" className="app-header__name">{user.name}</Link>
             <button type="button" className="btn btn-ghost btn-small" onClick={logout}>
               Cerrar sesión
             </button>

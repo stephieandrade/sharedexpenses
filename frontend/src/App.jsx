@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router'
 import RequireAuth from './auth/RequireAuth.jsx'
 import Layout from './components/Layout.jsx'
+import AccountPage from './pages/AccountPage.jsx'
 import GroupDetailPage from './pages/GroupDetailPage.jsx'
 import GroupsPage from './pages/GroupsPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -17,6 +18,7 @@ export default function App() {
           <Route index element={<Navigate to="/groups" replace />} />
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/groups/:groupId" element={<GroupDetailPage />} />
+          <Route path="/account" element={<AccountPage />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFoundPage />} />

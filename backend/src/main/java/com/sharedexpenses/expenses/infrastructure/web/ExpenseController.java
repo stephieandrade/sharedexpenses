@@ -3,6 +3,7 @@ package com.sharedexpenses.expenses.infrastructure.web;
 import com.sharedexpenses.expenses.application.CreateExpenseUseCase;
 import com.sharedexpenses.expenses.application.DeleteExpenseUseCase;
 import com.sharedexpenses.expenses.application.ListExpensesUseCase;
+import com.sharedexpenses.expenses.application.UpdateExpenseUseCase;
 import com.sharedexpenses.expenses.domain.Participant;
 import com.sharedexpenses.shared.security.CurrentUserId;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -27,12 +29,14 @@ public class ExpenseController {
 
     private final ListExpensesUseCase listExpenses;
     private final CreateExpenseUseCase createExpense;
+    private final UpdateExpenseUseCase updateExpense;
     private final DeleteExpenseUseCase deleteExpense;
 
     public ExpenseController(ListExpensesUseCase listExpenses, CreateExpenseUseCase createExpense,
-                             DeleteExpenseUseCase deleteExpense) {
+                             UpdateExpenseUseCase updateExpense, DeleteExpenseUseCase deleteExpense) {
         this.listExpenses = listExpenses;
         this.createExpense = createExpense;
+        this.updateExpense = updateExpense;
         this.deleteExpense = deleteExpense;
     }
 
@@ -48,19 +52,33 @@ public class ExpenseController {
             description = "EQUAL reparte a partes iguales, AMOUNTS por importes y PERCENTAGES por porcentajes. "
                     + "Las partes suman siempre el importe exacto")
     public ExpenseResponse create(@CurrentUserId Long userId, @PathVariable Long groupId,
-                                  @Valid @RequestBody CreateExpenseRequest request) {
-        List<Participant> participants = request.participants().stream()
-                .map(p -> new Participant(p.userId(), p.value()))
-                .toList();
+                                  @Valid @RequestBody ExpenseRequest request) {
         return ExpenseResponse.from(createExpense.execute(new CreateExpenseUseCase.Command(
                 groupId, userId, request.description(), request.amount(), request.paidById(), request.date(),
-                request.splitType(), participants)));
+                request.splitType(), participants(request))));
+    }
+
+    @PutMapping("/{expenseId}")
+    @Operation(summary = "Modifica un gasto",
+            description = "Reemplaza descripción, importe, pagador, fecha y reparto. Se aplican las mismas reglas que al crearlo")
+    public ExpenseResponse update(@CurrentUserId Long userId, @PathVariable Long groupId, @PathVariable Long expenseId,
+                                  @Valid @RequestBody ExpenseRequest request) {
+        return ExpenseResponse.from(updateExpense.execute(new UpdateExpenseUseCase.Command(
+                groupId, expenseId, userId, request.description(), request.amount(), request.paidById(),
+                request.date(), request.splitType(), participants(request))));
     }
 
     @DeleteMapping("/{expenseId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Elimina un gasto")
+    @Operation(summary = "Elimina un gasto",
+            description = "Si era el último gasto del grupo, también se eliminan los pagos registrados")
     public void delete(@CurrentUserId Long userId, @PathVariable Long groupId, @PathVariable Long expenseId) {
         deleteExpense.execute(groupId, expenseId, userId);
+    }
+
+    private static List<Participant> participants(ExpenseRequest request) {
+        return request.participants().stream()
+                .map(p -> new Participant(p.userId(), p.value()))
+                .toList();
     }
 }

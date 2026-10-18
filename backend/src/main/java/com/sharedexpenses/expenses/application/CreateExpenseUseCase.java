@@ -36,7 +36,8 @@ public class CreateExpenseUseCase {
         LocalDate date = command.date() != null ? command.date() : LocalDate.now(clock);
 
         Expense expense = Expense.create(command.groupId(), command.description(), command.amount(),
-                command.paidById(), date, strategies.forType(command.splitType()), command.participants());
+                command.paidById(), date, strategies.forType(command.splitType()), command.participants())
+                .createdBy(command.requesterId());
         group.requireMembers(expense.involvedUsers());
 
         return expenses.save(expense);

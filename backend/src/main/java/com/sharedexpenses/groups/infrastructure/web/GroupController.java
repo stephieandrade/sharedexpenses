@@ -2,9 +2,11 @@ package com.sharedexpenses.groups.infrastructure.web;
 
 import com.sharedexpenses.groups.application.AddMemberUseCase;
 import com.sharedexpenses.groups.application.CreateGroupUseCase;
+import com.sharedexpenses.groups.application.DeleteGroupUseCase;
 import com.sharedexpenses.groups.application.GetGroupDetailUseCase;
 import com.sharedexpenses.groups.application.ListMyGroupsUseCase;
 import com.sharedexpenses.groups.application.RemoveMemberUseCase;
+import com.sharedexpenses.groups.application.UpdateGroupUseCase;
 import com.sharedexpenses.shared.security.CurrentUserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -31,15 +34,20 @@ public class GroupController {
     private final GetGroupDetailUseCase getGroupDetail;
     private final AddMemberUseCase addMember;
     private final RemoveMemberUseCase removeMember;
+    private final UpdateGroupUseCase updateGroup;
+    private final DeleteGroupUseCase deleteGroup;
 
     public GroupController(ListMyGroupsUseCase listMyGroups, CreateGroupUseCase createGroup,
                            GetGroupDetailUseCase getGroupDetail, AddMemberUseCase addMember,
-                           RemoveMemberUseCase removeMember) {
+                           RemoveMemberUseCase removeMember, UpdateGroupUseCase updateGroup,
+                           DeleteGroupUseCase deleteGroup) {
         this.listMyGroups = listMyGroups;
         this.createGroup = createGroup;
         this.getGroupDetail = getGroupDetail;
         this.addMember = addMember;
         this.removeMember = removeMember;
+        this.updateGroup = updateGroup;
+        this.deleteGroup = deleteGroup;
     }
 
     @GetMapping
@@ -60,6 +68,22 @@ public class GroupController {
     @Operation(summary = "Detalle de un grupo con sus miembros")
     public GroupDetailResponse detail(@CurrentUserId Long userId, @PathVariable Long groupId) {
         return GroupDetailResponse.from(getGroupDetail.execute(groupId, userId));
+    }
+
+    @PutMapping("/{groupId}")
+    @Operation(summary = "Modifica el nombre y la descripción del grupo", description = "La moneda no se puede cambiar")
+    public GroupSummaryResponse update(@CurrentUserId Long userId, @PathVariable Long groupId,
+                                       @Valid @RequestBody UpdateGroupRequest request) {
+        return GroupSummaryResponse.from(updateGroup.execute(new UpdateGroupUseCase.Command(
+                groupId, userId, request.name(), request.description())));
+    }
+
+    @DeleteMapping("/{groupId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Elimina el grupo",
+            description = "Solo el creador. Se eliminan sus gastos, pagos y miembros; las cuentas de usuario se conservan")
+    public void delete(@CurrentUserId Long userId, @PathVariable Long groupId) {
+        deleteGroup.execute(groupId, userId);
     }
 
     @PostMapping("/{groupId}/members")

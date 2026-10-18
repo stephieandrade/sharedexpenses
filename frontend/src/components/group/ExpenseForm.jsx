@@ -3,16 +3,54 @@ import { formatMoney, hasAtMostTwoDecimals, parseDecimal, toCents, todayIso } fr
 import { SPLIT_TYPES } from '../../utils/splitTypes.js'
 import ErrorMessage from '../ErrorMessage.jsx'
 
-export default function ExpenseForm({ members, currentUserId, currency, onSubmit, onCancel }) {
-  const [description, setDescription] = useState('')
-  const [amount, setAmount] = useState('')
-  const [date, setDate] = useState(todayIso)
-  const [paidById, setPaidById] = useState(currentUserId)
-  const [splitType, setSplitType] = useState('EQUAL')
-  const [selected, setSelected] = useState(() => new Set(members.map((m) => m.id)))
-  const [values, setValues] = useState({})
+function initialState(expense, members, currentUserId) {
+  const memberIds = new Set(members.map((m) => m.id))
+  if (!expense) {
+    return {
+      description: '',
+      amount: '',
+      date: todayIso(),
+      paidById: currentUserId,
+      splitType: 'EQUAL',
+      selected: memberIds,
+      values: {},
+      removedPeople: false,
+    }
+  }
+  const shares = expense.shares.filter((share) => memberIds.has(share.userId))
+  const values = {}
+  for (const share of shares) {
+    if (expense.splitType === 'AMOUNTS') {
+      values[share.userId] = Number(share.amount).toFixed(2)
+    } else if (expense.splitType === 'PERCENTAGES') {
+      const percentage = share.percentage ?? (Number(share.amount) / Number(expense.amount)) * 100
+      values[share.userId] = String(Number(Number(percentage).toFixed(4)))
+    }
+  }
+  return {
+    description: expense.description,
+    amount: Number(expense.amount).toFixed(2),
+    date: expense.date,
+    paidById: memberIds.has(expense.paidById) ? expense.paidById : currentUserId,
+    splitType: expense.splitType,
+    selected: new Set(shares.map((share) => share.userId)),
+    values,
+    removedPeople: shares.length !== expense.shares.length || !memberIds.has(expense.paidById),
+  }
+}
+
+export default function ExpenseForm({ expense, members, currentUserId, currency, notice, onSubmit, onCancel }) {
+  const [initial] = useState(() => initialState(expense, members, currentUserId))
+  const [description, setDescription] = useState(initial.description)
+  const [amount, setAmount] = useState(initial.amount)
+  const [date, setDate] = useState(initial.date)
+  const [paidById, setPaidById] = useState(initial.paidById)
+  const [splitType, setSplitType] = useState(initial.splitType)
+  const [selected, setSelected] = useState(initial.selected)
+  const [values, setValues] = useState(initial.values)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(null)
+  const editing = Boolean(expense)
 
   const participants = members.filter((m) => selected.has(m.id))
   const total = parseDecimal(amount)
@@ -88,7 +126,7 @@ export default function ExpenseForm({ members, currentUserId, currency, onSubmit
 
   return (
     <form className="card form" onSubmit={submit} noValidate>
-      <h2>Nuevo gasto</h2>
+      <h2>{editing ? 'Editar gasto' : 'Nuevo gasto'}</h2>
       <div className="form__row">
         <label className="field field--grow">
           <span>Descripción</span>
@@ -149,11 +187,15 @@ export default function ExpenseForm({ members, currentUserId, currency, onSubmit
         <p className="hint">{splitHint(splitType, participants, values, total, currency)}</p>
       </fieldset>
 
+      {initial.removedPeople && (
+        <p className="hint">Algunas personas de este gasto ya no son miembros del grupo y se han quitado del reparto.</p>
+      )}
+      {notice && <p className="hint">{notice}</p>}
       <ErrorMessage error={error} />
       <div className="form__actions">
         <button type="button" className="btn btn-ghost" onClick={onCancel}>Cancelar</button>
         <button type="submit" className="btn btn-primary" disabled={pending}>
-          {pending ? 'Guardando…' : 'Guardar gasto'}
+          {pending ? 'Guardando…' : editing ? 'Guardar cambios' : 'Guardar gasto'}
         </button>
       </div>
     </form>

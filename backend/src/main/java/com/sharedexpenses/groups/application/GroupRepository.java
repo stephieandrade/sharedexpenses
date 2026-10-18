@@ -12,4 +12,6 @@ public interface GroupRepository {
     Optional<Group> findById(Long id);
 
     List<Group> findByMember(Long userId);
+
+    void deleteById(Long id);
 }

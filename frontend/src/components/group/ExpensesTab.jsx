@@ -1,14 +1,33 @@
 import { useState } from 'react'
 import { api } from '../../api/api.js'
+import { useConfirm } from '../../confirm/useConfirm.js'
 import { formatDate, formatMoney } from '../../utils/format.js'
 import { splitTypeLabel } from '../../utils/splitTypes.js'
 import ErrorMessage from '../ErrorMessage.jsx'
 import ExpenseForm from './ExpenseForm.jsx'
 
-export default function ExpensesTab({ group, expenses, currency, currentUserId, nameOf, onChanged }) {
+function deleteMessage(expense, expenseCount, paymentCount, currency) {
+  const base = `El gasto de ${formatMoney(expense.amount, currency)} desaparecerá y los balances se recalcularán.`
+  if (paymentCount === 0) {
+    return base
+  }
+  const payments = paymentCount === 1 ? 'el pago registrado' : `los ${paymentCount} pagos registrados`
+  if (expenseCount === 1) {
+    return `${base} Como es el último gasto del grupo, también se eliminará ${payments}.`
+  }
+  const others = paymentCount === 1 ? 'Hay 1 pago registrado' : `Hay ${paymentCount} pagos registrados`
+  return `${base} ${others} en el grupo: si alguno correspondía a este gasto, elimínalo en Liquidación.`
+}
+
+export default function ExpensesTab({ group, expenses, payments, currency, currentUserId, nameOf, onChanged }) {
+  const confirm = useConfirm()
   const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const [error, setError] = useState(null)
   const total = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0)
+  const editNotice = payments.length > 0
+    ? 'Los pagos registrados no cambian al editar un gasto. Revísalos en Liquidación si hace falta.'
+    : null
 
   const create = async (expense) => {
     await api.createExpense(group.id, expense)
@@ -16,8 +35,20 @@ export default function ExpensesTab({ group, expenses, currency, currentUserId, 
     await onChanged()
   }
 
+  const update = async (expenseId, changes) => {
+    await api.updateExpense(group.id, expenseId, changes)
+    setEditingId(null)
+    await onChanged()
+  }
+
   const remove = async (expense) => {
-    if (!window.confirm(`¿Eliminar el gasto "${expense.description}"?`)) {
+    const accepted = await confirm({
+      title: `¿Eliminar "${expense.description}"?`,
+      message: deleteMessage(expense, expenses.length, payments.length, currency),
+      confirmLabel: 'Eliminar gasto',
+      danger: true,
+    })
+    if (!accepted) {
       return
     }
     setError(null)
@@ -56,13 +87,22 @@ export default function ExpensesTab({ group, expenses, currency, currentUserId, 
       )}
 
       <ul className="list">
-        {expenses.map((expense) => (
+        {expenses.map((expense) => expense.id === editingId ? (
+          <li key={expense.id}>
+            <ExpenseForm expense={expense} members={group.members} currentUserId={currentUserId}
+                         currency={currency} notice={editNotice}
+                         onSubmit={(changes) => update(expense.id, changes)} onCancel={() => setEditingId(null)} />
+          </li>
+        ) : (
           <li key={expense.id} className="card expense">
             <div className="expense__main">
               <div>
                 <h3>{expense.description}</h3>
                 <p className="muted">
                   {formatDate(expense.date)} · Pagó {nameOf(expense.paidById)} · {splitTypeLabel(expense.splitType)}
+                  {expense.createdById && expense.createdById !== expense.paidById && (
+                    <> · Añadido por {nameOf(expense.createdById)}</>
+                  )}
                 </p>
               </div>
               <strong className="expense__amount">{formatMoney(expense.amount, currency)}</strong>
@@ -79,10 +119,15 @@ export default function ExpensesTab({ group, expenses, currency, currentUserId, 
                   ))}
                 </ul>
               </details>
-              <button type="button" className="btn btn-ghost btn-small btn-danger-text"
-                      onClick={() => remove(expense)}>
-                Eliminar
-              </button>
+              <div className="expense__actions">
+                <button type="button" className="btn btn-ghost btn-small" onClick={() => setEditingId(expense.id)}>
+                  Editar
+                </button>
+                <button type="button" className="btn btn-ghost btn-small btn-danger-text"
+                        onClick={() => remove(expense)}>
+                  Eliminar
+                </button>
+              </div>
             </div>
           </li>
         ))}

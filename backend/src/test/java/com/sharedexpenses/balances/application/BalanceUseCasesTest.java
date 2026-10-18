@@ -15,6 +15,7 @@ import com.sharedexpenses.groups.application.GroupAccess;
 import com.sharedexpenses.groups.application.GroupRepository;
 import com.sharedexpenses.groups.domain.Group;
 import com.sharedexpenses.shared.domain.BusinessRuleException;
+import com.sharedexpenses.shared.domain.NotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -114,6 +115,33 @@ class BalanceUseCasesTest {
                 new RegisterPaymentUseCase.Command(10L, 1L, 1L, 42L, new BigDecimal("10"), TODAY)))
                 .isInstanceOf(BusinessRuleException.class);
         verify(payments, never()).save(any());
+    }
+
+    @Test
+    void listsPaymentsNewestFirst() {
+        Payment older = new Payment(1L, 10L, 2L, 1L, new BigDecimal("5"), TODAY.minusDays(3));
+        Payment newer = new Payment(2L, 10L, 3L, 1L, new BigDecimal("7"), TODAY);
+        when(payments.findByGroupId(10L)).thenReturn(List.of(older, newer));
+
+        assertThat(new ListPaymentsUseCase(access, payments).execute(10L, 2L)).containsExactly(newer, older);
+    }
+
+    @Test
+    void deletesAPaymentOfTheGroup() {
+        when(payments.findById(5L)).thenReturn(Optional.of(new Payment(5L, 10L, 2L, 1L, new BigDecimal("5"), TODAY)));
+
+        new DeletePaymentUseCase(access, payments).execute(10L, 5L, 3L);
+
+        verify(payments).deleteById(5L);
+    }
+
+    @Test
+    void cannotDeleteAPaymentOfAnotherGroup() {
+        when(payments.findById(5L)).thenReturn(Optional.of(new Payment(5L, 77L, 2L, 1L, new BigDecimal("5"), TODAY)));
+
+        assertThatThrownBy(() -> new DeletePaymentUseCase(access, payments).execute(10L, 5L, 3L))
+                .isInstanceOf(NotFoundException.class);
+        verify(payments, never()).deleteById(any());
     }
 
     private void givenDinnerPaidBy1AndPayment(BigDecimal paid) {

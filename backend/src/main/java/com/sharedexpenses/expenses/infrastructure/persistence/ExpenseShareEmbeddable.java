@@ -14,12 +14,16 @@ public class ExpenseShareEmbeddable {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
+    @Column(precision = 7, scale = 4)
+    private BigDecimal percentage;
+
     protected ExpenseShareEmbeddable() {
     }
 
-    ExpenseShareEmbeddable(Long userId, BigDecimal amount) {
+    ExpenseShareEmbeddable(Long userId, BigDecimal amount, BigDecimal percentage) {
         this.userId = userId;
         this.amount = amount;
+        this.percentage = percentage;
     }
 
     Long getUserId() {
@@ -28,5 +32,9 @@ public class ExpenseShareEmbeddable {
 
     BigDecimal getAmount() {
         return amount;
+    }
+
+    BigDecimal getPercentage() {
+        return percentage;
     }
 }
