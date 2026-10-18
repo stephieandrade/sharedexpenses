@@ -35,12 +35,15 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http, ProblemDetailSecurityHandler problems,
                                             RateLimitProperties rateLimits, CaptchaProperties captcha,
                                             CaptchaVerifier captchaVerifier, Clock clock,
-                                            ProblemDetailWriter problemWriter) throws Exception {
+                                            ProblemDetailWriter problemWriter,
+                                            @Value("${app.client-ip-header:}") String clientIpHeader)
+            throws Exception {
+        ClientIpResolver clientIp = new ClientIpResolver(clientIpHeader);
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(new AuthRateLimitFilter(rateLimits, clock, problemWriter),
+                .addFilterBefore(new AuthRateLimitFilter(rateLimits, clock, problemWriter, clientIp),
                         BearerTokenAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
@@ -56,7 +59,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(problems));
 
         if (captcha.enabled()) {
-            http.addFilterAfter(new RegistrationCaptchaFilter(captchaVerifier, problemWriter),
+            http.addFilterAfter(new RegistrationCaptchaFilter(captchaVerifier, problemWriter, clientIp),
                     AuthRateLimitFilter.class);
         } else {
             log.warn("TURNSTILE_SECRET is not set: the registration captcha is disabled");

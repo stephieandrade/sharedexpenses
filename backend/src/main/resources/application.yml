@@ -23,6 +23,7 @@ springdoc:
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
   time-zone: Europe/Madrid
+  client-ip-header: ${CLIENT_IP_HEADER:}
   jwt:
     secret: ${JWT_SECRET:}
     expiration: 24h
@@ -62,8 +63,7 @@ spring:
     password: ${DB_PASSWORD}
     hikari:
       maximum-pool-size: 5
-server:
-  forward-headers-strategy: native
 app:
+  client-ip-header: ${CLIENT_IP_HEADER:CF-Connecting-IP}
   jwt:
     allow-random-secret: ${APP_JWT_ALLOW_RANDOM_SECRET:false}

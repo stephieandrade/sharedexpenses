@@ -190,7 +190,9 @@ DELETE /api/groups/{groupId}/payments/{paymentId} 204
 - Rate limiting on auth (`AuthRateLimitFilter` + `FixedWindowRateLimiter`, in memory, no dependency): register
   5/hour per IP and 50/hour in total, login 10 per 5 minutes per IP → 429 ProblemDetail with `Retry-After`.
   Configurable with `RATE_LIMIT_REGISTER_PER_IP`, `RATE_LIMIT_REGISTER_TOTAL`, `RATE_LIMIT_LOGIN_PER_IP`.
-  In `prod`, `server.forward-headers-strategy: native` takes the client IP from Render's proxy headers.
+  The client IP comes from `ClientIpResolver`: in `prod` it trusts the `CF-Connecting-IP` header set by Cloudflare,
+  which sits in front of Render (configurable with `CLIENT_IP_HEADER`); without it, the connection address.
+  Verified on Render: the connection address is a different Cloudflare edge IP on every request.
   In-memory counters assume a single instance (Render free plan).
 - Registration captcha with Cloudflare Turnstile: the frontend sends the widget token in the `X-Captcha-Token`
   header; `RegistrationCaptchaFilter` (after the rate limit) checks it with `TurnstileCaptchaVerifier`

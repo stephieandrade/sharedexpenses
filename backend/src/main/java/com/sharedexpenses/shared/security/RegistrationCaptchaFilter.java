@@ -20,10 +20,13 @@ public class RegistrationCaptchaFilter extends OncePerRequestFilter {
 
     private final CaptchaVerifier verifier;
     private final ProblemDetailWriter problemWriter;
+    private final ClientIpResolver clientIp;
 
-    public RegistrationCaptchaFilter(CaptchaVerifier verifier, ProblemDetailWriter problemWriter) {
+    public RegistrationCaptchaFilter(CaptchaVerifier verifier, ProblemDetailWriter problemWriter,
+                                     ClientIpResolver clientIp) {
         this.verifier = verifier;
         this.problemWriter = problemWriter;
+        this.clientIp = clientIp;
     }
 
     @Override
@@ -44,7 +47,7 @@ public class RegistrationCaptchaFilter extends OncePerRequestFilter {
 
         boolean human;
         try {
-            human = verifier.verify(token, request.getRemoteAddr());
+            human = verifier.verify(token, clientIp.resolve(request));
         } catch (RuntimeException e) {
             log.warn("Captcha verification unavailable: {}", e.getMessage());
             problemWriter.write(request, response, HttpStatus.SERVICE_UNAVAILABLE,

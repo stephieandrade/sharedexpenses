@@ -31,10 +31,13 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, List<Rule>> rulesByPath;
     private final ProblemDetailWriter problemWriter;
+    private final ClientIpResolver clientIp;
 
-    public AuthRateLimitFilter(RateLimitProperties properties, Clock clock, ProblemDetailWriter problemWriter) {
+    public AuthRateLimitFilter(RateLimitProperties properties, Clock clock, ProblemDetailWriter problemWriter,
+                               ClientIpResolver clientIp) {
         this.problemWriter = problemWriter;
-        Function<HttpServletRequest, String> perClient = HttpServletRequest::getRemoteAddr;
+        this.clientIp = clientIp;
+        Function<HttpServletRequest, String> perClient = clientIp::resolve;
         Function<HttpServletRequest, String> total = request -> "all";
         this.rulesByPath = Map.of(
                 REGISTER_PATH, List.of(
@@ -65,7 +68,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
             throws IOException {
         long seconds = Math.max(1, retryAfter.toSeconds());
         long minutes = Math.max(1, (seconds + 59) / 60);
-        log.warn("Rate limit exceeded on {} from {}", request.getRequestURI(), request.getRemoteAddr());
+        log.warn("Rate limit exceeded on {} from {}", request.getRequestURI(), clientIp.resolve(request));
         response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(seconds));
         problemWriter.write(request, response, HttpStatus.TOO_MANY_REQUESTS,
                 "Demasiados intentos. Vuelve a intentarlo en " + minutes + (minutes == 1 ? " minuto" : " minutos"));
