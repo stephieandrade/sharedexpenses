@@ -13,6 +13,8 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.client.RestClient;
@@ -65,6 +67,16 @@ public class SecurityConfig {
             log.warn("TURNSTILE_SECRET is not set: the registration captcha is disabled");
         }
         return http.build();
+    }
+
+    @Bean
+    BearerTokenResolver bearerTokenResolver() {
+        DefaultBearerTokenResolver standard = new DefaultBearerTokenResolver();
+        return request -> isPublicEndpoint(request.getRequestURI()) ? null : standard.resolve(request);
+    }
+
+    private static boolean isPublicEndpoint(String path) {
+        return path.startsWith("/api/auth/") || path.equals("/api/health");
     }
 
     @Bean

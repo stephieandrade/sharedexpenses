@@ -1,8 +1,10 @@
 package com.sharedexpenses.api;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -73,6 +75,34 @@ class AuthApiTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.errors.name").exists())
                 .andExpect(jsonPath("$.errors.email").exists())
                 .andExpect(jsonPath("$.errors.password").exists());
+    }
+
+    @Test
+    void anOldTokenDoesNotBreakRegistrationOrLogin() throws Exception {
+        String email = "stale-token-" + java.util.UUID.randomUUID() + "@test.com";
+
+        mvc.perform(post("/api/auth/register")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer old.invalid.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name": "Ana", "email": "%s", "password": "%s"}
+                                """.formatted(email, PASSWORD)))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post("/api/auth/login")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer old.invalid.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email": "%s", "password": "wrong-password"}
+                                """.formatted(email)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value("Email o contraseña incorrectos"));
+    }
+
+    @Test
+    void anOldTokenIsStillRejectedOnProtectedEndpoints() throws Exception {
+        mvc.perform(get("/api/groups").header(HttpHeaders.AUTHORIZATION, "Bearer old.invalid.token"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

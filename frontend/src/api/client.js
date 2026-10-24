@@ -10,9 +10,12 @@ export class ApiError extends Error {
   }
 }
 
+const PUBLIC_PATHS = ['/api/auth/']
+
 export async function request(method, path, body, extraHeaders = {}) {
   const headers = { ...extraHeaders }
-  const token = readSession()?.token
+  const isPublic = PUBLIC_PATHS.some((prefix) => path.startsWith(prefix))
+  const token = isPublic ? null : readSession()?.token
   if (token) {
     headers.Authorization = `Bearer ${token}`
   }
