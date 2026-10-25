@@ -289,4 +289,4 @@ Local environment notes: `JAVA_HOME` must point to JDK 21. The Dockerfile build 
 3. ✅ Persistence (JPA adapters) and use cases
 4. ✅ REST API, OpenAPI, error handling and security (registration, login, JWT, CORS, rate limiting, captcha) — steps 4 and 5 done together, because every endpoint needs the authenticated user
 5. ✅ React frontend: login/registration, group list, detail with expenses, balances and settlement
-6. docker-compose, deployment (Render + Neon + Vercel) and final README
+6. ✅ docker-compose, deployment (Render + Neon + Vercel) and final README
